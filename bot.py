@@ -1,11 +1,12 @@
 import asyncio
 import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
-# ВСТАВЬ СВОЙ ТОКЕН СЮДА
 TOKEN = "9039056446:AAGKcvNtiFC5UnAH0h_YuXxwiut-FEq6320" 
 
 bot = Bot(token=TOKEN)
@@ -40,7 +41,6 @@ async def switch_lang(message: Message):
     user_lang[uid] = new_lang
     await message.answer(TEXTS[new_lang]["start"], reply_markup=main_menu(new_lang))
 
-# --- ИГРА: Собери плов ---
 @dp.message(F.text.in_([TEXTS["ru"]["play"], TEXTS["uz"]["play"]]))
 async def play_pilaf(message: Message):
     lang = user_lang.get(message.from_user.id, "ru")
@@ -62,7 +62,6 @@ async def pilaf_step(callback):
     }
     await callback.message.edit_text(f"{results[choice]}\n\n(Остальные шаги добавим на следующем этапе!)")
 
-# --- ЗАГЛУШКИ ---
 @dp.message(F.text.in_([TEXTS["ru"]["district"], TEXTS["uz"]["district"]]))
 async def guess_district(message: Message):
     await message.answer("Викторина про районы скоро появится! 🗺️")
@@ -75,7 +74,20 @@ async def pilaf_or_not(message: Message):
 async def donate(message: Message):
     await message.answer("💎 Донат через Telegram Stars скоро будет подключён.")
 
+# --- ЗАГЛУШКА ДЛЯ RENDER ---
+class WebServer(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is alive")
+
+def run_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(('0.0.0.0', port), WebServer)
+    server.serve_forever()
+
 async def main():
+    threading.Thread(target=run_server, daemon=True).start()
     print("Бот запущен!")
     await dp.start_polling(bot)
 
